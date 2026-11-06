@@ -1,0 +1,76 @@
+---
+title: "[Your title]"
+author: "[Your name]"
+format: pdf
+editor: source
+---
+
+```{r, echo=F, message=F, warning=F}
+library(tidyverse)
+library(gt)
+library(gtsummary) # for creating nice tables
+# load additional libraries and data here 
+```
+
+# Introduction
+
+
+
+# Data
+
+
+```{r}
+#| echo: false
+#| fig.width: 5
+#| fig.height: 3
+#| message: false
+#| warning: false
+#| fig.cap: "[Insert caption with takeaway here]"
+
+# duplicate this code chunk for all plots you produce
+mtcars |> # replace this with your plot
+  ggplot(aes(x=mpg, y=disp))+
+  geom_point(alpha=0.7)+
+  theme_bw()
+```
+
+# Methods 
+
+```{r}
+#| echo: false
+mod <- lm(disp~ mpg + cyl, data = mtcars)# replace with your models
+```
+
+```{r}
+#| echo: false
+#| fig.width: 5
+#| fig.height: 3
+#| message: false
+#| warning: false
+#| fig.cap: "[Insert caption with takeaway on diagnostics here]"
+
+# create diagnostics plot(s) here
+```
+
+# Results 
+
+```{r}
+#| echo: false
+#| results: "asis"
+#| label: tbl-my-table
+#| tbl-cap: "[Insert caption here]"
+#| 
+# use this to code create nice tables of regression output
+# ?tbl_regression for more information
+tbl_regression(mod, 
+               intercept = TRUE,
+      #          label = list(cyl ~ "Number of Cylinders",
+      # mpg  ~ "Miles per gallon"), # replace variable names with actual meaning
+              estimate_fun = purrr::partial(style_sigfig, digits = 3), # use to adjust number of digits shown
+              pvalue_fun = purrr::partial(style_sigfig, digits = 4) # use to adjust number of digits shown
+) 
+```
+
+
+# Conclusion 
+
