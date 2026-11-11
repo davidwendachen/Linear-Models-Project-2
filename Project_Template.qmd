@@ -10,6 +10,7 @@ library(tidyverse)
 library(gt)
 library(gtsummary)
 library(patchwork)
+library(GGally)
 ```
 
 # 1. Introduction
@@ -150,3 +151,43 @@ change_arm + change_hist
 ```
 
 Since treatment was randomly assigned, the four groups are nearly identical in age, baseline CD4, symptoms, and prior therapy, so other variables cannot confound the comparison. Figure 4 compares treatment and prior therapy groups using cd4_change, which is the change in CD4 cell counts from the baseline to week-20. We see that patients on Drug A alone lost an average of 17 cells/mm$^3$, while those on Drugs A + B, Drug B alone, and Drugs A + C gained 52, 27, and 19 cells/mm$^3$, respectively. We also notice patients with no prior therapy gained 40 cells/mm$^3$, compared with 5 to 8 for those with prior therapy, indicating that prior therapy is an important covariate.
+
+# Methods 
+
+```{r}
+#| echo: false
+mod <- lm(disp~ mpg + cyl, data = mtcars)# replace with your models
+```
+
+```{r}
+#| echo: false
+#| fig.width: 5
+#| fig.height: 3
+#| message: false
+#| warning: false
+#| fig.cap: "[Insert caption with takeaway on diagnostics here]"
+
+# create diagnostics plot(s) here
+```
+
+# Results 
+
+```{r}
+#| echo: false
+#| results: "asis"
+#| label: tbl-my-table
+#| tbl-cap: "[Insert caption here]"
+#| 
+# use this to code create nice tables of regression output
+# ?tbl_regression for more information
+tbl_regression(mod, 
+               intercept = TRUE,
+      #          label = list(cyl ~ "Number of Cylinders",
+      # mpg  ~ "Miles per gallon"), # replace variable names with actual meaning
+              estimate_fun = purrr::partial(style_sigfig, digits = 3), # use to adjust number of digits shown
+              pvalue_fun = purrr::partial(style_sigfig, digits = 4) # use to adjust number of digits shown
+) 
+```
+
+
+# Conclusion 
