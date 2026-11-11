@@ -1,6 +1,6 @@
 ---
 title: "[Your title]"
-author: "[Your name]"
+author: "David Chen, Aryan Kanuparti"
 format: pdf
 editor: source
 ---
@@ -8,69 +8,145 @@ editor: source
 ```{r, echo=F, message=F, warning=F}
 library(tidyverse)
 library(gt)
-library(gtsummary) # for creating nice tables
-# load additional libraries and data here 
+library(gtsummary)
+library(patchwork)
 ```
 
-# Introduction
+# 1. Introduction
 
+For decades, HIV has been viewed as an incurable disease with long-lasting effects, and fear of it caused certain groups of individuals to be discriminated against. However, with advances in medicine, HIV is becoming far less life-threatening and more treatable. In this report, we compare four HIV treatment regimens: two single drugs, and two drug combinations. We attempt to find the regimen that best protects immune systems and delays the progression of HIV. Knowing the most successful treatment regimen will drastically improve the degree of care people with HIV are receiving. Specifically, we ask whether the benefit of each treatment regimen differs by disease stage and prior HIV therapy, and whether the treatments provide a lasting effect for patients whose disease is less severe.
 
+While this might appear to be simple at first glance, in reality we need to analyze a number of different variables carefully to account for differences between patients that could affect how well a treatment works. Such variables include HIV therapy history prior to study, disease stage, race, and other factors.
 
-# Data
+Prior research has shown that Drug A improves survival and slows disease progression, but its benefits fade over time, particularly in patients who have yet to show symptoms. We recognize that combining Drug A with other drugs produced larger and longer-lasting improvements in immune markers, although the combination of Drug A and Drug C not showing a clear clinical benefit. We expect the combination of different drugs to outperform Drug A alone, with decreased benefits for patients with more serious conditions or more prior treatment.
 
+Through the use of [model], we analyzed how treatment regimen relates to immune response and disease progression in patients in an explanatory study. We will also be examining other covariates, such as HIV therapy history prior to study and disease stage, as well as interactions between these covariates and treatment. [one sentence giving a brief summary of our results].  The data is from a randomized clinical trial of 2,139 adults infected with HIV, where the patients were randomly assigned to the four different regimens, and it is provided by Kathryn Roeder in the Statistics 36-617 class at Carnegie Mellon University.
+
+# 2. Data
+
+## 2.1: Initial Data Exploration
 
 ```{r}
 #| echo: false
-#| fig.width: 5
-#| fig.height: 3
+hiv <- read.csv("HIV.treatments.csv")
+
+hiv <- hiv %>%
+  mutate(arm = factor(treat2, 0:3, c("Drug A alone", "Drugs A + B", "Drugs A + C", "Drug B alone")),
+         history = factor(hist2, 1:3, c("None", "1-52 weeks", "> 52 weeks")),
+         symptom_f = factor(symptom, 0:1, c("Asymptomatic", "Symptomatic")),
+         cd4_change = cd4.20 - cd4)
+```
+
+The data come from a randomized clinical trial of adults infected with HIV whose CD4 cell counts were between 200 and 500 cells/mm$^3$ at entry, and were provided to us in the Statistics 36-617 class by Kathryn Roeder. Patients were randomly assigned to one of four treatment groups: Drug A alone, Drug B alone, Drugs A and B together, or Drugs A and C together.
+
+The dataset contains 27 variables on 2,139 patients, with one row per patient. Most variables describe patients at the start of the study (baseline), such as age, prior HIV therapy, and symptoms. CD4 cell counts were recorded at baseline, 20 weeks, and 96 weeks, and CD8 cell counts at baseline and 20 weeks. The remaining variables describe events during follow-up, such as whether a patient stopped treatment early or experienced a serious clinical event.
+
+CD4 cells are white blood cells that fight infection, and their count measures how well the immune system is functioning, with a normal range of about 500 to 1,500 cells/mm$^3$. Baseline CD4 counts in our data range from 70 to 1,199 cells/mm$^3$, excluding three recorded values of 0 that we address in Section 2.2. Our main covariate of interest is the treatment group, and our response variable is the CD4 cell counts at 20 weeks (cd4.20), which measures patients' immune response to early treatment. Other variables that could affect a patient’s response include baseline CD4 and CD8 counts, symptoms at baseline, length of prior HIV therapy, prior use of HIV drugs other than Drug A, Karnofsky score which measures a patient’s ability to carry out basic activities, age, and race.
+
+Baseline CD4 and CD8 is measured in cells/mm$^3$, age in years, and Karnofsky score on a 0–100 scale symptoms at baseline. Prior non-Drug A therapy is recorded as a yes/no binary, prior HIV therapy is grouped as none, 1–52 weeks, or more than 52 weeks, and race is recorded as a binary, with race = 0 for white and race = 1 for non-white. We also create a new variable cd4_change, which is just the change in CD4 cell counts from the baseline to week-20.
+
+## 2.2: Interesting Values, Missing Data, and Transformations
+
+```{r}
+#| echo: false
+#| label: fig-dist
+#| fig-width: 7
+#| fig-height: 5
 #| message: false
-#| warning: false
-#| fig.cap: "[Insert caption with takeaway here]"
+#| fig-cap: "Week-20 CD4 is moderately right-skewed, while for the most part baseline CD4 falls within the 200-500 range. Baseline CD8 is strongly right-skewed, and most patients have a Karnofsky score of 90 or 100."
 
-# duplicate this code chunk for all plots you produce
-mtcars |> # replace this with your plot
-  ggplot(aes(x=mpg, y=disp))+
-  geom_point(alpha=0.7)+
-  theme_bw()
+# Remove the three observations with baseline CD4 values of 0.
+hiv_clean <- hiv %>% filter(cd4 > 0)
+
+p11 <- ggplot(hiv_clean, aes(x = cd4.20)) +
+  geom_histogram(color = "lightblue", bins = 30) +
+  labs(title = "Week-20 CD4 Count", x = "CD4 count (cells/mm^3)", y = "Number of patients")
+
+p12 <- ggplot(hiv_clean, aes(x = cd4)) +
+  geom_histogram(color = "lightblue", bins = 30) +
+  labs(title = "Baseline CD4 Count", x = "CD4 count (cells/mm^3)", y = "Number of patients")
+
+p21 <- ggplot(hiv_clean, aes(x = cd8)) +
+  geom_histogram(color = "lightblue", bins = 30) +
+  labs(title = "Baseline CD8 Count", x = "CD8 count (cells/mm^3)", y = "Number of patients")
+
+p22 <- ggplot(hiv_clean, aes(x = factor(karnof))) +
+  geom_bar(fill = "grey", color = "lightblue") +
+  labs(title = "Karnofsky Score", x = "Karnofsky score", y = "Number of patients")
+
+(p11 + p12) / (p21 + p22)
 ```
 
-# Methods 
+Now we look at the distributions of the response variable and the main quantitative covariates. Figure 1 shows that baseline CD4 ranges from 70 to 1,199 cells/mm$^3$, and approximately 80% of patients fall within the 200-500 range. Since only around 20% of patients fall outside that range, it is reasonable to assume that it is due to natural normal variation. 
+
+Three patients have a recorded baseline CD4 of exactly 0 but week-20 counts are at approximately normal levels. It is extremely improbable for an immune system to recover from zero CD4 cells to normal levels in 20 weeks, hence these are almost certainly data-entry errors, and we remove these observations from all analyses, leaving 2,136 patients. 
+
+Week-20 CD4 has a moderate right skew, so we would have to log-transform it in order to not violate the constant-variance assumption of linear regression.Baseline CD8 has a strong right skew, but since inference in linear regression does not require predictors to be normally distributed, we leave it untransformed in order to preserve interpretability. Karnofsky score takes only four values (70, 80, 90, and 100), with only 9 patients at 70, and we leave it untouched.
 
 ```{r}
 #| echo: false
-mod <- lm(disp~ mpg + cyl, data = mtcars)# replace with your models
+#| label: fig-missing
+#| fig-width: 6
+#| fig-height: 3
+#| fig-cap: "Week-96 CD4 is missing for patients who stopped their assigned treatment early, meaning missingness is systematic and an analysis of week-96 CD4 will be biased toward patients who stayed on treatment."
+hiv_clean %>%
+  mutate(off = factor(offtreat, 0:1, c("Stayed on treatment", "Went off treatment"))) %>%
+  group_by(arm, off) %>%
+  summarise(pct_missing = mean(is.na(cd4.96)), .groups = "drop") %>%
+  ggplot(aes(x = arm, y = pct_missing, fill = off)) +
+  geom_col(position = "dodge") +
+  labs(x = NULL, y = "Percent missing week-96 CD4", fill = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 ```
+
+Week-96 CD4 is the only variable with missing data, missing for 797 patients. Figure 2 shows that this missingness is systematic, since 66% of patients who stopped treatment early lack a week-96 count, compared with 21% of those who stayed on treatment. Therefore, our week-96 model therefore uses only the 1,339 patients with a week-96 count. We note that since the patients are more healthy in the week-96 model, we have to interpret it with more caution.
+
+## 2.3: Limitations of the Data
+
+While the data include many variables relevant to how patients respond to HIV treatment, some important ones are missing. The data does not include information about the consistency of drug intake, time since diagnosis, and drug resistance. Without information on drug intake, we must assume patients took their treatments as prescribed, and any patients who did not would make the treatments appear less effective than they actually are.
+
+Our measures of disease stage are also limited. Symptom statuses are recorded only as present or absent, and baseline CD4 and Karnofsky score are only rough estimates of how severe a patient’s disease is. This limits how precisely we can answer whether treatment effects depend on disease stage. Furthermore, as discussed in section 2.2, week-96 CD4 is missing a significant amount of data in a systematic way, so those results are less reliable. This means that our analysis of long-term benefit is limited.
+
+Finally, the sample is also 83% male and 71% white, and every patient had a CD4 count between roughly 200 and 500 at entry. This means our findings cannot be generalized to women, non-white patients, or patients with more or less advanced disease.
+
+## 2.4: Relationships Between Variables
 
 ```{r}
 #| echo: false
-#| fig.width: 5
-#| fig.height: 3
+#| label: fig-pairs
+#| fig-width: 6.5
+#| fig-height: 5.5
 #| message: false
-#| warning: false
-#| fig.cap: "[Insert caption with takeaway on diagnostics here]"
-
-# create diagnostics plot(s) here
+#| fig-cap: "Week-20 CD4 is strongly related to baseline CD4 and only weakly related to the other quantitative covariates, so baseline CD4 is the most important continuous covariate to control for."
+hiv_clean %>%
+  select(`Week-20 CD4` = cd4.20, `Baseline CD4` = cd4, `Baseline CD8` = cd8, Age = age, Karnofsky = karnof) %>%
+  ggpairs(progress = FALSE, lower = list(continuous = wrap("points", alpha = 0.1, size = 0.3))) +
+  theme_minimal(base_size = 8)
 ```
 
-# Results 
+Figure 3 shows a strong positive linear relationship between week-20 CD4 and baseline CD4 (r = 0.59), which is expected since a patient's starting CD4 count should be closely correlated with their week-20 CD4 count. This means that baseline CD4 is essential to control for. Week-20 CD4 is only weakly related to Karnofsky score (r = 0.10), baseline CD8 (r = 0.05), and age (r = -0.05). The covariates are also only weakly related to each other, so multicollinearity should not be a concern.
 
 ```{r}
 #| echo: false
-#| results: "asis"
-#| label: tbl-my-table
-#| tbl-cap: "[Insert caption here]"
-#| 
-# use this to code create nice tables of regression output
-# ?tbl_regression for more information
-tbl_regression(mod, 
-               intercept = TRUE,
-      #          label = list(cyl ~ "Number of Cylinders",
-      # mpg  ~ "Miles per gallon"), # replace variable names with actual meaning
-              estimate_fun = purrr::partial(style_sigfig, digits = 3), # use to adjust number of digits shown
-              pvalue_fun = purrr::partial(style_sigfig, digits = 4) # use to adjust number of digits shown
-) 
+#| label: fig-boxplots
+#| fig-width: 8
+#| fig-height: 3.5
+#| fig-cap: "The change in CD4 over 20 weeks differs clearly by treatment group, with patients on Drug A alone losing CD4 cells on average, and by prior therapy, with patients who had no prior therapy gaining the most."
+change_arm <- ggplot(hiv_clean, aes(x = arm, y = cd4_change)) +
+  geom_boxplot(fill = "lightblue", outlier.alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_cartesian(ylim = c(-300, 400)) +
+  labs(title = "CD4 Change by Treatment", x = NULL, y = "Week-20 minus baseline CD4") +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
+
+change_hist <- ggplot(hiv_clean, aes(x = history, y = cd4_change)) +
+  geom_boxplot(fill = "lightblue", outlier.alpha = 0.3) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_cartesian(ylim = c(-300, 400)) +
+  labs(title = "CD4 Change by Prior Therapy", x = "Prior HIV therapy", y = "Week-20 minus baseline CD4")
+
+change_arm + change_hist
 ```
 
-
-# Conclusion 
-
+Since treatment was randomly assigned, the four groups are nearly identical in age, baseline CD4, symptoms, and prior therapy, so other variables cannot confound the comparison. Figure 4 compares treatment and prior therapy groups using cd4_change, which is the change in CD4 cell counts from the baseline to week-20. We see that patients on Drug A alone lost an average of 17 cells/mm$^3$, while those on Drugs A + B, Drug B alone, and Drugs A + C gained 52, 27, and 19 cells/mm$^3$, respectively. We also notice patients with no prior therapy gained 40 cells/mm$^3$, compared with 5 to 8 for those with prior therapy, indicating that prior therapy is an important covariate.
