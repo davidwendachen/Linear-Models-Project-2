@@ -21,7 +21,7 @@ While this might appear to be simple at first glance, in reality we need to anal
 
 Prior research has shown that Drug A improves survival and slows disease progression, but its benefits fade over time, particularly in patients who have yet to show symptoms. We recognize that combining Drug A with other drugs produced larger and longer-lasting improvements in immune markers, although the combination of Drug A and Drug C not showing a clear clinical benefit. We expect the combination of different drugs to outperform Drug A alone, with decreased benefits for patients with more serious conditions or more prior treatment.
 
-Through the use of [model], we analyzed how treatment regimen relates to immune response and disease progression in patients in an explanatory study. We will also be examining other covariates, such as HIV therapy history prior to study and disease stage, as well as interactions between these covariates and treatment. [one sentence giving a brief summary of our results].  The data is from a randomized clinical trial of 2,139 adults infected with HIV, where the patients were randomly assigned to the four different regimens, and it is provided by Kathryn Roeder in the Statistics 36-617 class at Carnegie Mellon University.
+Through the use of \[model\], we analyzed how treatment regimen relates to immune response and disease progression in patients in an explanatory study. We will also be examining other covariates, such as HIV therapy history prior to study and disease stage, as well as interactions between these covariates and treatment. \[one sentence giving a brief summary of our results\]. The data is from a randomized clinical trial of 2,139 adults infected with HIV, where the patients were randomly assigned to the four different regimens, and it is provided by Kathryn Roeder in the Statistics 36-617 class at Carnegie Mellon University.
 
 # 2. Data
 
@@ -78,9 +78,9 @@ p22 <- ggplot(hiv_clean, aes(x = factor(karnof))) +
 (p11 + p12) / (p21 + p22)
 ```
 
-Now we look at the distributions of the response variable and the main quantitative covariates. Figure 1 shows that baseline CD4 ranges from 70 to 1,199 cells/mm$^3$, and approximately 80% of patients fall within the 200-500 range. Since only around 20% of patients fall outside that range, it is reasonable to assume that it is due to natural normal variation. 
+Now we look at the distributions of the response variable and the main quantitative covariates. Figure 1 shows that baseline CD4 ranges from 70 to 1,199 cells/mm$^3$, and approximately 80% of patients fall within the 200-500 range. Since only around 20% of patients fall outside that range, it is reasonable to assume that it is due to natural normal variation.
 
-Three patients have a recorded baseline CD4 of exactly 0 but week-20 counts are at approximately normal levels. It is extremely improbable for an immune system to recover from zero CD4 cells to normal levels in 20 weeks, hence these are almost certainly data-entry errors, and we remove these observations from all analyses, leaving 2,136 patients. 
+Three patients have a recorded baseline CD4 of exactly 0 but week-20 counts are at approximately normal levels. It is extremely improbable for an immune system to recover from zero CD4 cells to normal levels in 20 weeks, hence these are almost certainly data-entry errors, and we remove these observations from all analyses, leaving 2,136 patients.
 
 Week-20 CD4 has a moderate right skew, so we would have to log-transform it in order to not violate the constant-variance assumption of linear regression.Baseline CD8 has a strong right skew, but since inference in linear regression does not require predictors to be normally distributed, we leave it untransformed in order to preserve interpretability. Karnofsky score takes only four values (70, 80, 90, and 100), with only 9 patients at 70, and we leave it untouched.
 
@@ -152,7 +152,49 @@ change_arm + change_hist
 
 Since treatment was randomly assigned, the four groups are nearly identical in age, baseline CD4, symptoms, and prior therapy, so other variables cannot confound the comparison. Figure 4 compares treatment and prior therapy groups using cd4_change, which is the change in CD4 cell counts from the baseline to week-20. We see that patients on Drug A alone lost an average of 17 cells/mm$^3$, while those on Drugs A + B, Drug B alone, and Drugs A + C gained 52, 27, and 19 cells/mm$^3$, respectively. We also notice patients with no prior therapy gained 40 cells/mm$^3$, compared with 5 to 8 for those with prior therapy, indicating that prior therapy is an important covariate.
 
-# Methods 
+## 2.5: Potential Interactions
+
+```{r}
+#| echo: false
+#| label: fig-interactions
+#| fig-width: 7
+#| fig-height: 6.5
+#| message: false
+#| fig-cap: "Patients on Drug A alone have the smallest mean CD4 change in every symptom and prior therapy group, and lines are roughly parallel, suggesting the interactions aren't particularly strong."
+p1 <- hiv_clean %>%
+  group_by(arm, symptom_f) %>%
+  summarise(mean_change = mean(cd4_change), .groups = "drop") %>%
+  ggplot(aes(x = symptom_f, y = mean_change, color = arm, group = arm)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = arm_cols) +
+  labs(x = "Symptom status at baseline", y = "Mean CD4 change (cells/mm^3)",
+       color = "Treatment", title = "Mean CD4 Change by Symptom Status and Treatment") +
+  theme_minimal()
+
+p2 <- hiv_clean %>%
+  group_by(arm, history) %>%
+  summarise(mean_change = mean(cd4_change), .groups = "drop") %>%
+  ggplot(aes(x = history, y = mean_change, color = arm, group = arm)) +
+  geom_point(size = 2) +
+  geom_line() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = arm_cols) +
+  labs(x = "Prior HIV therapy", y = "Mean CD4 change (cells/mm^3)",
+       color = "Treatment", title = "Mean CD4 Change by Prior Therapy and Treatment") +
+  theme_minimal()
+
+p1 / p2
+```
+
+We examine two potential interactions: treatment $\times$ symptom status at baseline, and treatment $\times$ length of prior HIV therapy. These interactions test whether the benefit of treatment depends on a patient’s disease stage or prior drug exposure, which are two of our research questions.
+
+In both graphs of Figure 5, patients taking Drug A alone lost CD4 cells on average, Drug B alone and Drugs A + C gained a moderate amount, and Drugs A + B gained the most. Symptomatic patients gained slightly less than asymptomatic patients on every treatment, and patients with prior HIV therapy gained less than those without it, regardless of treatment. Since the lines are roughly parallel, the advantage of each treatment over Drug A alone appears similar across symptom and prior therapy groups. This shows that these interactions may be weak. The one exception to this is Drugs A + C, which gained almost nothing among patients with 1–52 weeks of prior therapy.
+
+Since these interactions directly address our research questions, we test them formally with partial F-tests in Section 3.
+
+# 3. Methods
 
 ```{r}
 #| echo: false
@@ -170,7 +212,7 @@ mod <- lm(disp~ mpg + cyl, data = mtcars)# replace with your models
 # create diagnostics plot(s) here
 ```
 
-# Results 
+# Results
 
 ```{r}
 #| echo: false
@@ -189,5 +231,4 @@ tbl_regression(mod,
 ) 
 ```
 
-
-# Conclusion 
+# Conclusion
